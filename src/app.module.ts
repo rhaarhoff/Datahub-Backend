@@ -11,7 +11,7 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './user/user.module';
 import { FeatureModule } from './feature/feature.module';
-import { TenantFeatureModule } from './tenant-feature/tenant-feature.module';
+import { TenantFeatureModule } from './tenant/tenant-feature/tenant-feature.module';
 import { SubscriptionPlanModule } from './subscription-plan/subscription-plan.module';
 import { CasbinModule } from './casbin-integration/casbin.module';
 import { PermissionModule } from './permission/permission.module';
@@ -31,6 +31,7 @@ import { AuditService } from './audit/audit.service';
 import { AuditController } from './audit/audit.controller';
 import { AuditResolver } from './audit/audit.resolver';
 import { CasbinHelperService } from './casbin-integration/casbin-helper.service';
+import { TenantRoleModule } from './tenant/tenant-role/tenant-role.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { CasbinHelperService } from './casbin-integration/casbin-helper.service'
     UserRoleModule,
     RedisCacheModule,
     FeatureAccessModule,
+    TenantRoleModule,
   ],
   controllers: [SubscriptionController, HealthController, FeatureTierController, AuditController],
   providers: [

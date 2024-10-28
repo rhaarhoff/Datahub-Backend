@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@prisma-service/prisma.service';
-import { CacheManagerService } from '../cache/cache-manager.service';
-import { SubscriptionPlanInvalidException } from '../common/exceptions/subscription-plan-invalid.exception';
-import { TenantFeatureUpdateException } from '../common/exceptions/tenant-feature-update.exception';
-import { TenantFeatureInsertException } from '../common/exceptions/tenant-feature-insert.exception';
-import { CasbinHelperService } from '../casbin-integration/casbin-helper.service';
+import { CacheManagerService } from '../../cache/cache-manager.service';
+import { SubscriptionPlanInvalidException } from '../../common/exceptions/subscription-plan-invalid.exception';
+import { TenantFeatureUpdateException } from '../../common/exceptions/tenant-feature-update.exception';
+import { TenantFeatureInsertException } from '../../common/exceptions/tenant-feature-insert.exception';
+import { CasbinHelperService } from '../../casbin-integration/casbin-helper.service';
 
 @Injectable()
 export class TenantFeatureService {

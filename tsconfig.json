@@ -41,10 +41,10 @@
       "@feature-service/*": ["src/feature/*"],
       "@feature-resolver/*": ["src/feature/*"],
 
-      "@tenant-feature-dto/*": ["src/tenant-feature/dto/*"],
-      "@tenant-feature-model/*": ["src/tenant-feature/models/*"],
-      "@tenant-feature-service/*": ["src/tenant-feature/*"],
-      "@tenant-feature-resolver/*": ["src/tenant-feature/*"],
+      "@tenant-feature-dto/*": ["src/tenant/tenant-feature/dto/*"],
+      "@tenant-feature-model/*": ["src/tenant/tenant-feature/models/*"],
+      "@tenant-feature-service/*": ["src/tenant/tenant-feature/*"],
+      "@tenant-feature-resolver/*": ["src/tenant/tenant-feature/*"],
 
       "@subscription-plan-dto/*": ["src/subscription-plan/dto/*"],
       "@subscription-plan-model/*": ["src/subscription-plan/models/*"],

@@ -13,7 +13,7 @@ import { TenantFeatureService } from './tenant-feature.service';
 import { UpdateTenantFeatureDto } from './dto/update-tenant-feature.dto';
 import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { TenantFeatureResponseDto } from './dto/tenant-feature-response.dto';
-import { CasbinHelperService } from '../casbin-integration/casbin-helper.service'; // Import Casbin Helper Service
+import { CasbinHelperService } from '../../casbin-integration/casbin-helper.service'; // Import Casbin Helper Service
 import { Request } from 'express'; // Import Request from express
 
 @ApiTags('Tenant Features')

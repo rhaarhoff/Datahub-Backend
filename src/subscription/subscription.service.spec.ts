@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SubscriptionService } from './subscription.service';
 import { PrismaService } from '@prisma-service/prisma.service';
-import { TenantFeatureService } from '../tenant-feature/tenant-feature.service';
+import { TenantFeatureService } from '../tenant/tenant-feature/tenant-feature.service';
 import { FeatureAccessService } from '../feature-access/feature-access.service';
 import { CacheService } from '../cache/cache.service';
 import { Logger } from '@nestjs/common';

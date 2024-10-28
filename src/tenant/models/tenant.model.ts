@@ -1,7 +1,7 @@
 // src/tenant/models/tenant.model.ts
 import { ObjectType, Field, ID } from '@nestjs/graphql';
 import { User } from '@user-model/user.model';
-import { TenantFeatureModel } from '@tenant-feature-model/tenant-feature.model'; 
+import { TenantFeatureModel } from '@tenant-service/tenant-feature/models/tenant-feature.model'; 
 import { TenantStatus } from '@prisma/client';
 import { UserRole } from '@user-role-model/user-role.model';
 

@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TenantFeatureResolver } from './tenant-feature.resolver';
 import { TenantFeatureService } from './tenant-feature.service';
 import { PrismaService } from '@prisma-service/prisma.service';
-import { CacheService } from '../cache/cache.service';
+import { CacheService } from '../../cache/cache.service';
 
 describe('TenantFeatureResolver', () => {
   let resolver: TenantFeatureResolver;

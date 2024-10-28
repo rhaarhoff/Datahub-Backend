@@ -1,11 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TenantFeatureService } from './tenant-feature.service';
 import { PrismaService } from '@prisma-service/prisma.service';
-import { CacheService } from '../cache/cache.service';
-import { CasbinHelperService } from '../casbin-integration/casbin-helper.service';
-import { SubscriptionPlanInvalidException } from '../common/exceptions/subscription-plan-invalid.exception';
-import { TenantFeatureUpdateException } from '../common/exceptions/tenant-feature-update.exception';
-import { TenantFeatureInsertException } from '../common/exceptions/tenant-feature-insert.exception';
+import { CacheService } from '../../cache/cache.service';
+import { CasbinHelperService } from '../../casbin-integration/casbin-helper.service';
+import { SubscriptionPlanInvalidException } from '../../common/exceptions/subscription-plan-invalid.exception';
+import { TenantFeatureUpdateException } from '../../common/exceptions/tenant-feature-update.exception';
+import { TenantFeatureInsertException } from '../../common/exceptions/tenant-feature-insert.exception';
 import { BillingCycle } from '@prisma/client';
 import { CacheManagerService } from 'src/cache/cache-manager.service';
 

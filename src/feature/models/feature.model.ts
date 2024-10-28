@@ -1,5 +1,5 @@
 import { ObjectType, Field, Int, ID } from '@nestjs/graphql';
-import { TenantFeatureModel } from '@tenant-feature-model/tenant-feature.model';
+import { TenantFeatureModel } from '@tenant-service/tenant-feature/models/tenant-feature.model';
 import { FeatureTierModel } from '../../feature-tier/models/feature-tier.model';
 import { SubscriptionPlan } from '../../subscription-plan/models/subscription-plan.model';
 import { IsOptional, IsString, Length } from 'class-validator';
