@@ -1,0 +1,428 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CasbinRule {
+  id           Int         @id @default(autoincrement())
+  ptype        String
+  v0           String?
+  v1           String?
+  v2           String?
+  v3           String?
+  v4           String?
+  v5           String?
+  v6           String?
+  tenantId     Int? // Relating rules to a specific tenant (optional)
+  tenant       Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissionId Int? // Relating to Permission model
+  permission   Permission? @relation(fields: [permissionId], references: [id], onDelete: Cascade) // Foreign key relationship
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Tenant {
+  id                    Int                @id @default(autoincrement())
+  name                  String             @unique
+  domain                String?            @unique
+  status                TenantStatus       @default(ACTIVE)
+  subscriptionPlanId    Int?
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+  complianceLevel       String? // Tracking compliance requirements (e.g., HIPAA, GDPR)
+  currentUsage          Int? // Usage tracking for ABAC
+  usageQuota            Int? // Usage quota for ABAC
+  subscriptionPlan      SubscriptionPlan?  @relation("TenantSubscriptionPlan", fields: [subscriptionPlanId], references: [id], onDelete: NoAction)
+  users                 UserTenant[]       @relation("TenantUsers")
+  tenantFeatures        TenantFeature[]    @relation("TenantFeatures")
+  userRoles             UserRole[]         @relation("TenantUserRoles")
+  tenantRoles           TenantRole[]       @relation("TenantRoles")
+  tenantPermissions     TenantPermission[] @relation("TenantPermissions")
+  auditLogs             AuditLog[]         @relation("TenantAuditLogs")
+  deletedAt             DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  TenantPermission      TenantPermission[]
+  TenantRole            TenantRole[]
+  CasbinRule            CasbinRule[]
+  FeatureAccess         FeatureAccess[]
+
+  @@index([subscriptionPlanId])
+}
+
+model User {
+  id               Int          @id @default(autoincrement())
+  email            String       @unique
+  name             String?
+  phone            String?
+  githubId         String?      @unique
+  microsoftId      String?      @unique
+  profileImageUrl  String?
+  password         String
+  lastLogin        DateTime?
+  tenants          UserTenant[] @relation("UserTenants")
+  roles            UserRole[]   @relation("UserRoles")
+  auditLogs        AuditLog[]   @relation("UserAuditLogs")
+  impersonatorLogs AuditLog[]   @relation("ImpersonatorAuditLogs")
+  impersonatedLogs AuditLog[]   @relation("ImpersonatedAuditLogs")
+  deletedAt        DateTime? // Soft delete field
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([githubId])
+  @@index([microsoftId])
+}
+
+model Role {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  description String?
+  type        RoleType // Global or Tenant-specific role
+  permissions Permission[] @relation("RolePermissions")
+  userRoles   UserRole[]   @relation("RoleUserRoles")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+enum RoleType {
+  GLOBAL
+  TENANT
+}
+
+model Permission {
+  id          Int            @id @default(autoincrement())
+  name        String         @unique
+  description String?
+  type        PermissionType // Global or Tenant-specific role
+  roles       Role[]         @relation("RolePermissions")
+  casbinRules CasbinRule[]   @relation // Relating Casbin Rules
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+enum PermissionType {
+  GLOBAL
+  TENANT
+}
+
+model UserRole {
+  id            Int             @id @default(autoincrement())
+  userId        Int
+  tenantId      Int?
+  roleId        Int
+  isPrimaryRole Boolean         @default(false)
+  user          User            @relation("UserRoles", fields: [userId], references: [id], onDelete: Restrict)
+  tenant        Tenant?         @relation("TenantUserRoles", fields: [tenantId], references: [id], onDelete: Restrict)
+  role          Role            @relation("RoleUserRoles", fields: [roleId], references: [id], onDelete: Restrict)
+  featureAccess FeatureAccess[] @relation("UserRoleFeatureAccess")
+  startDate     DateTime        @default(now())
+  endDate       DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+  TenantRole    TenantRole[]    @relation("UserTenantRoles")
+
+  @@unique([userId, tenantId, roleId])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([roleId])
+}
+
+model UserTenant {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tenantId  Int
+  user      User     @relation("UserTenants", fields: [userId], references: [id], onDelete: NoAction)
+  tenant    Tenant   @relation("TenantUsers", fields: [tenantId], references: [id], onDelete: NoAction)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, tenantId])
+  @@index([userId])
+  @@index([tenantId])
+}
+
+model TenantRole {
+  id          Int                @id @default(autoincrement())
+  name        String // Tenant-specific role name (e.g., Manager, Employee)
+  description String?
+  tenantId    Int
+  permissions TenantPermission[] @relation("RolePermissions")
+  users       UserRole[]         @relation("UserTenantRoles")
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  Tenant Tenant[] @relation("TenantRoles")
+}
+
+model TenantPermission {
+  id          Int          @id @default(autoincrement())
+  name        String // Tenant-specific permission name (e.g., VIEW_PROJECT, EDIT_INVOICE)
+  description String?
+  roles       TenantRole[] @relation("RolePermissions")
+  tenantId    Int // Associated tenant
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  Tenant Tenant[] @relation("TenantPermissions")
+}
+
+model Feature {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  description String?
+  tierId      Int? // Foreign key for FeatureTier
+  tier        FeatureTier? @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  isPremium   Boolean      @default(false)
+  enabled     Boolean      @default(true)
+  deletedAt   DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  TenantFeature    TenantFeature[]    @relation("FeatureTenantFeatures")
+  FeatureAccess    FeatureAccess[]    @relation("FeatureFeatureAccess")
+  SubscriptionPlan SubscriptionPlan[] @relation("PlanFeatures")
+
+  AuditLog AuditLog[]
+}
+
+model FeatureTier {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique // The name of the tier (e.g., 'Basic', 'Pro', 'Enterprise')
+  description String // Optional description
+  deletedAt   DateTime? // Soft delete field
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  Feature Feature[]
+}
+
+model TenantFeature {
+  id           Int      @id @default(autoincrement())
+  tenantId     Int
+  featureId    Int
+  enabled      Boolean  @default(true)
+  subscribedAt DateTime @default(now())
+  tenant       Tenant   @relation("TenantFeatures", fields: [tenantId], references: [id], onDelete: Restrict)
+  feature      Feature  @relation("FeatureTenantFeatures", fields: [featureId], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, featureId])
+  @@index([tenantId])
+  @@index([featureId])
+}
+
+enum AccessLevel {
+  NONE
+  VIEW
+  EDIT
+  MANAGE
+}
+
+model FeatureAccess {
+  id          Int         @id @default(autoincrement())
+  featureId   Int
+  tenantId    Int
+  userRoleId  Int
+  accessLevel AccessLevel @default(NONE)
+  deletedAt   DateTime?
+
+  userRole UserRole @relation("UserRoleFeatureAccess", fields: [userRoleId], references: [id], onDelete: NoAction)
+  feature  Feature  @relation("FeatureFeatureAccess", fields: [featureId], references: [id], onDelete: NoAction)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: NoAction)
+
+  @@unique([featureId, tenantId, userRoleId], name: "FeatureAccessCompositeKey")
+  @@index([userRoleId])
+  @@index([featureId])
+}
+
+model SubscriptionPlan {
+  id              Int          @id @default(autoincrement())
+  name            String       @unique
+  description     String
+  price           Float
+  billingCycle    BillingCycle @default(MONTHLY)
+  trialPeriodDays Int? // Optional field to offer trial periods
+  tenants         Tenant[]     @relation("TenantSubscriptionPlan")
+  features        Feature[]    @relation("PlanFeatures")
+  deletedAt       DateTime? // Soft delete field
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([billingCycle])
+}
+
+model AuditLog {
+  id             Int         @id @default(autoincrement())
+  action         AuditAction
+  impersonatorId Int?
+  impersonatedId Int?
+  tenantId       Int?
+  featureId      Int?
+  userId         Int?
+  before         Json? // Add before field to store previous state
+  after          Json? // Add after field to store updated state
+  modifiedFields Json? // Store modified field names as an array
+  ipAddress      String?
+  userAgent      String?
+
+  timestamp        DateTime @default(now())
+  user             User?    @relation("UserAuditLogs", fields: [userId], references: [id], onDelete: NoAction)
+  impersonator     User?    @relation("ImpersonatorAuditLogs", fields: [impersonatorId], references: [id], onDelete: NoAction)
+  impersonatedUser User?    @relation("ImpersonatedAuditLogs", fields: [impersonatedId], references: [id], onDelete: NoAction)
+  tenant           Tenant?  @relation("TenantAuditLogs", fields: [tenantId], references: [id], onDelete: NoAction)
+  feature          Feature? @relation(fields: [featureId], references: [id], onDelete: NoAction)
+
+  @@index([userId])
+  @@index([impersonatorId])
+  @@index([impersonatedId])
+  @@index([tenantId])
+  @@index([action])
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+  PENDING
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+  WEEKLY
+  QUARTERLY
+}
+
+// prisma/schema.prisma
+enum AuditAction {
+  // User Management
+  USER_CREATED // Logs user creation
+  USER_DELETED // Logs user deletion
+  USER_UPDATED // Logs user update
+
+  // User Role Management
+  CREATE_USER_ROLE // Logs user role creation
+  UPDATE_USER_ROLE // Logs user role update
+  DELETE_USER_ROLE // Logs user role deletion
+
+  // Authentication & Session Management
+  LOGIN // Logs when a user logs in
+  LOGOUT // Logs when a user logs out
+  IMPERSONATION_START // Logs when impersonation starts
+  IMPERSONATION_END // Logs when impersonation ends
+
+  // Subscription Management
+  SUBSCRIPTION_CHANGE // Logs when a subscription is changed
+  UPDATE_SUBSCRIPTION // Logs when a subscription is updated
+
+  // Feature Management
+  CREATE_FEATURE // Logs when a feature is created
+  UPDATE_FEATURE // Logs when a feature is updated
+  DELETE_FEATURE // Logs when a feature is deleted
+  FEATURE_ACCESS // Logs when a feature is accessed
+  RESTORE_FEATURE // Logs when a feature is restored
+  SOFT_DELETE_FEATURE // Logs when a feature is soft-deleted
+  BULK_CREATE_FEATURE // Logs when features are created in bulk
+
+  // Feature Access Management
+  ACCESS_FEATURE // Logs when a feature is accessed
+  UPDATE_FEATURE_ACCESS // Logs when feature access is updated
+  CLEAR_FEATURE_ACCESS // Logs when feature access is cleared
+
+  // Casbin Policy Management
+  CREATE_POLICY // Logs when a Casbin policy is created
+  UPDATE_POLICY // Logs when a Casbin policy is updated
+  DELETE_POLICY // Logs when a Casbin policy is deleted
+  ENFORCE_POLICY // Logs when a Casbin policy is enforced (checked)
+
+  // Casbin Role Management
+  ADD_ROLE // Logs when a Casbin role is added
+  UPDATE_ROLE // Logs when a Casbin role is updated
+  DELETE_ROLE // Logs when a Casbin role is deleted
+}
+
+model Customer {
+  id                            Int       @id @default(autoincrement())
+  halopsa_id                    Int?      @unique
+  name                          String
+  email                         String?   @unique
+  phone                         String?
+  inactive                      Boolean   @default(false)
+  colour                        String?
+  toplevel_id                   Int
+  toplevel_name                 String
+  item_tax_code                 Int
+  service_tax_code              Int
+  taxable                       Boolean   @default(true)
+  confirmemail                  Int?
+  actionemail                   Int?
+  clearemail                    Int?
+  messagegroup_id               Int?
+  override_org_name             String?
+  override_org_phone            String?
+  override_org_email            String?
+  override_org_website          String?
+  mailbox_override              Int?
+  calldate                      DateTime?
+  pritech                       Int?
+  sectech                       Int?
+  accountmanagertech            Int?
+  thirdpartynhdapiurl           String?
+  xeroid                        String?
+  xero_tenant_id                String?
+  accountsid                    String?
+  client_to_invoice             Int?
+  itglue_id                     String?
+  qbo_company_id                String?
+  kashflow_tenant_id            Int?
+  sentinel_subscription_id      String?
+  sentinel_workspace_name       String?
+  sentinel_resource_group_name  String?
+  default_currency_code         Int?
+  client_to_invoice_recurring   Int?
+  dbc_company_id                String?
+  customertype                  Int?
+  ticket_invoices_for_each_site Boolean   @default(false)
+  is_vip                        Boolean   @default(false)
+  percentage_to_survey          Int?
+  overridepdftemplatequote      Int?
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @updatedAt
+
+  // Relationships
+  HaloPsaTicket     HaloPsaTicket[]
+  QuickBooksInvoice QuickBooksInvoice[]
+}
+
+model HaloPsaTicket {
+  id          Int      @id @default(autoincrement())
+  ticketId    String   @unique
+  subject     String
+  description String?
+  status      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  customerId  Int
+  customer    Customer @relation(fields: [customerId], references: [id])
+}
+
+model QuickBooksInvoice {
+  id          Int      @id @default(autoincrement())
+  invoiceId   String   @unique
+  totalAmount Float
+  dueDate     DateTime
+  status      String
+  customerId  Int
+  customer    Customer @relation(fields: [customerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

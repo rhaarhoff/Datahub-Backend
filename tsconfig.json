@@ -1,0 +1,73 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "paths": {
+      "@user-dto/*": ["src/user/dto/*"],
+      "@user-model/*": ["src/user/models/*"],
+      "@user-service/*": ["src/user/*"],
+      "@user-resolver/*": ["src/user/*"],
+
+      "@role-dto/*": ["src/role/dto/*"],
+      "@role-model/*": ["src/role/models/*"],
+      "@role-service/*": ["src/role/*"],
+      "@role-resolver/*": ["src/role/*"],
+
+      "@user-role-dto/*": ["src/user-role/dto/*"],
+      "@user-role-model/*": ["src/user-role/models/*"],
+      "@user-role-service/*": ["src/user-role/*"],
+      "@user-role-resolver/*": ["src/user-role/*"],
+
+      "@permission-dto/*": ["src/permission/dto/*"],
+      "@permission-model/*": ["src/permission/models/*"],
+      "@permission-service/*": ["src/permission/*"],
+      "@permission-resolver/*": ["src/permission/*"],
+      
+      "@tenant-dto/*": ["src/tenant/dto/*"],
+      "@tenant-model/*": ["src/tenant/models/*"],
+      "@tenant-service/*": ["src/tenant/*"],
+      "@tenant-resolver/*": ["src/tenant/*"],
+
+      "@feature-dto/*": ["src/feature/dto/*"],
+      "@feature-model/*": ["src/feature/models/*"],
+      "@feature-service/*": ["src/feature/*"],
+      "@feature-resolver/*": ["src/feature/*"],
+
+      "@tenant-feature-dto/*": ["src/tenant-feature/dto/*"],
+      "@tenant-feature-model/*": ["src/tenant-feature/models/*"],
+      "@tenant-feature-service/*": ["src/tenant-feature/*"],
+      "@tenant-feature-resolver/*": ["src/tenant-feature/*"],
+
+      "@subscription-plan-dto/*": ["src/subscription-plan/dto/*"],
+      "@subscription-plan-model/*": ["src/subscription-plan/models/*"],
+      "@subscription-plan-service/*": ["src/subscription-plan/*"],
+      "@subscription-plan-resolver/*": ["src/subscription-plan/*"],
+
+      "@prisma-service/*": ["src/prisma/*"],
+
+      "@casbin-integration/*": ["src/casbin-integration/*"],
+
+      "@decorators/*": ["src/common/decorators/*"],
+      "@guards/*": ["src/common/guards/*"],
+      "@services/*": ["src/services/*"],
+      "@modules/*": ["src/modules/*"]
+    },
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}
