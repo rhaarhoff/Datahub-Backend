@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["node", "jest"],
     "module": "commonjs",
     "declaration": true,
     "removeComments": true,
@@ -21,10 +22,10 @@
       "@role-service/*": ["src/role/*"],
       "@role-resolver/*": ["src/role/*"],
 
-      "@user-role-dto/*": ["src/user-role/dto/*"],
-      "@user-role-model/*": ["src/user-role/models/*"],
-      "@user-role-service/*": ["src/user-role/*"],
-      "@user-role-resolver/*": ["src/user-role/*"],
+      "@user-role-dto/*": ["src/user/user-role/dto/*"],
+      "@user-role-model/*": ["src/user/user-role/models/*"],
+      "@user-role-service/*": ["src/user/user-role/*"],
+      "@user-role-resolver/*": ["src/user/user-role/*"],
 
       "@permission-dto/*": ["src/permission/dto/*"],
       "@permission-model/*": ["src/permission/models/*"],

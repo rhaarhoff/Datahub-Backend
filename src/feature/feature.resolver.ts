@@ -3,7 +3,7 @@ import { FeatureService } from './feature.service';
 import { Feature } from '../feature-access/models/feature-access.model';
 import { CreateFeatureInput } from './dto/create-feature.input';
 import { UpdateFeatureInput } from './dto/update-feature.input';
-import { Roles } from '../common/decorators/roles.decorator';
+import { Roles } from '../common/decorators/roles/roles.decorator';
 import { UseGuards } from '@nestjs/common';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CasbinHelperService } from '../casbin-integration/casbin-helper.service';

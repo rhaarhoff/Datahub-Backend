@@ -16,7 +16,7 @@ import { SubscriptionPlanModule } from './subscription-plan/subscription-plan.mo
 import { CasbinModule } from './casbin-integration/casbin.module';
 import { PermissionModule } from './permission/permission.module';
 import { RoleModule } from './role/role.module';
-import { UserRoleModule } from './user-role/user-role.module';
+import { UserRoleModule } from './user/user-role/user-role.module';
 import { FeatureAccessService } from './feature-access/feature-access.service';
 import { SubscriptionService } from './subscription/subscription.service';
 import { SubscriptionController } from './subscription/subscription.controller';
@@ -32,6 +32,7 @@ import { AuditController } from './audit/audit.controller';
 import { AuditResolver } from './audit/audit.resolver';
 import { CasbinHelperService } from './casbin-integration/casbin-helper.service';
 import { TenantRoleModule } from './tenant/tenant-role/tenant-role.module';
+import { Authorize } from './common/decorators/authorize/authorize.decorator';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { TenantRoleModule } from './tenant/tenant-role/tenant-role.module';
     AuditService,
     AuditResolver,
     CasbinHelperService,
+    Authorize,
   ],
 })
 export class AppModule {}

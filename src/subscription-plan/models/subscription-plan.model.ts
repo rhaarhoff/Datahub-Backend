@@ -1,6 +1,6 @@
 import { ObjectType, Field, Float, Int } from '@nestjs/graphql';
 import { Tenant } from '../../tenant/models/tenant.model';
-import { Feature } from '../../feature-access/models/feature-access.model';
+import { Feature } from '../../feature/models/feature.model';
 import { BillingCycle } from '@prisma/client';
 
 @ObjectType()

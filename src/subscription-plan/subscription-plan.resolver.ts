@@ -4,7 +4,7 @@ import { SubscriptionPlan } from './models/subscription-plan.model';
 import { CreateSubscriptionPlanInput } from './dto/create-subscription-plan.input';
 import { UpdateSubscriptionPlanInput } from './dto/update-subscription-plan.input';
 import { NotFoundException, UseGuards } from '@nestjs/common';
-import { Roles } from '../common/decorators/roles.decorator'; // Adjust path based on your project structure
+import { Roles } from '../common/decorators/roles/roles.decorator'; // Adjust path based on your project structure
 import { RolesGuard } from '../common/guards/roles.guard'; // Adjust path based on your project structure
 
 @Resolver(() => SubscriptionPlan)

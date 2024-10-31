@@ -1,6 +1,6 @@
 import { ObjectType, Field, Int } from '@nestjs/graphql';
 import { Tenant } from '../../models/tenant.model';
-import { Feature } from '../../../feature-access/models/feature-access.model';
+import { Feature } from '../../../feature/models/feature.model';
 
 @ObjectType()
 export class TenantFeatureModel {

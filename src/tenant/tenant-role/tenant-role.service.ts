@@ -107,4 +107,107 @@ export class TenantRoleService {
       throw new BadRequestException('Failed to delete roles for tenant');
     }
   }
+  // Method to inherit roles from tenant role
+  public async inheritRolesFromTenantRole(tenantId: number, roleId: number): Promise<void> {
+    this.logger.log(`Starting role inheritance for tenant role ${roleId} of tenant ${tenantId}`);
+  
+    // Fetch tenant role and inherited role IDs
+    const tenantRole = await this.prisma.tenantRole.findUnique({ where: { id: roleId, tenantId } });
+    if (!tenantRole) {
+      throw new NotFoundException(`Tenant role with ID ${roleId} not found for tenant with ID ${tenantId}`);
+    }
+  
+    if (!tenantRole.inheritedRoleIds || tenantRole.inheritedRoleIds.length === 0) {
+      this.logger.warn(`No inherited roles found for tenant role ${roleId}`);
+      return;
+    }
+  
+    // Fetch roles to inherit from
+    const rolesToInherit = await this.prisma.role.findMany({
+      where: { id: { in: tenantRole.inheritedRoleIds } },
+    });
+  
+    if (rolesToInherit.length === 0) {
+      throw new NotFoundException(`No valid roles found to inherit for tenant role ${roleId}`);
+    }
+  
+    // Collect permissions to apply from inherited roles
+    const permissionsToInherit = await this.prisma.permission.findMany({
+      where: {
+        roleId: { in: rolesToInherit.map((role) => role.id) },
+      },
+    });
+  
+    // Use bulk upsert to apply all inherited permissions to the tenant role
+    await this.prisma.$transaction(async (prisma) => {
+      await prisma.permission.createMany({
+        data: permissionsToInherit.map((permission) => ({
+          roleId: roleId,
+          permissionId: permission.id,
+        })),
+        skipDuplicates: true, // Prevent duplicate permission assignments
+      });
+    });
+  
+    this.logger.log(`Successfully inherited roles for tenant role ${roleId} from roles: ${tenantRole.inheritedRoleIds.join(', ')}`);
+  
+    // Invalidate cache for permissions if necessary
+    await this.invalidatePermissionCache(tenantId, roleId);
+  }
+  
+
+  // Helper method for invalidating permission cache
+  private async invalidatePermissionCache(tenantId: number, roleId: number): Promise<void> {
+    const permissionCacheKey = this.cacheService.generateCacheKey('tenant', tenantId.toString(), `role-${roleId}-permissions`);
+
+    await retry(async () => {
+      await this.cacheService.clear(permissionCacheKey);
+      this.logger.log(`Cache invalidated for permissions of tenant role ${roleId} of tenant ${tenantId}`);
+    }, {
+      retries: 3,
+      onRetry: (err, attempt) => this.logger.warn(`Retry attempt ${attempt} for cache invalidation: ${err.message}`),
+    });
+  }
+
+  // Assign default permissions to a tenant role
+async assignDefaultPermissionsToRole(roleId: number, tenantId: number): Promise<void> {
+    try {
+      // Define default permissions for different roles
+      let defaultPermissions: string[] = [];
+      const role = await this.prisma.tenantRole.findUnique({ where: { id: roleId } });
+  
+      if (role) {
+        switch (role.name) {
+          case 'OWNER':
+            defaultPermissions = ['MANAGE_TENANT', 'VIEW_ALL', 'MANAGE_USERS'];
+            break;
+          case 'ADMIN':
+            defaultPermissions = ['VIEW_ALL', 'MANAGE_USERS'];
+            break;
+          case 'MEMBER':
+            defaultPermissions = ['VIEW_SELF'];
+            break;
+          default:
+            defaultPermissions = ['VIEW_SELF'];
+        }
+  
+        // Create tenant permissions for role
+        await this.prisma.tenantPermission.createMany({
+          data: defaultPermissions.map(permissionName => ({
+            name: permissionName,
+            tenantId,
+            roles: { connect: { id: roleId } },
+          })),
+          skipDuplicates: true,
+        });
+  
+        this.logger.log(`Assigned default permissions to role ID: ${roleId}`);
+      } else {
+        throw new NotFoundException(`Role with ID ${roleId} not found for tenant ${tenantId}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to assign permissions to role ID ${roleId}: ${error.message}`);
+      throw error;
+    }
+  }
 }

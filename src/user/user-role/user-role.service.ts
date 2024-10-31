@@ -4,9 +4,9 @@ import { CreateUserRoleDto } from './dto/create-user-role.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UserRole } from './models/user-role.model';
 import { plainToInstance } from 'class-transformer';
-import { FeatureAccessService } from '../feature-access/feature-access.service';
-import { CacheService } from '../cache/cache.service';
-import { AuditService } from '../audit/audit.service';
+import { FeatureAccessService } from '../../feature-access/feature-access.service';
+import { CacheService } from '../../cache/cache.service';
+import { AuditService } from '../../audit/audit.service';
 import { AuditAction, AccessLevel } from '@prisma/client';
 import retry from 'async-retry';
 

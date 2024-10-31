@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@prisma-service/prisma.service';
 import { TenantFeatureService } from '../tenant/tenant-feature/tenant-feature.service';
 import { FeatureAccessService } from '../feature-access/feature-access.service';
-import { UserRoleService } from '../user-role/user-role.service';  // Import UserRoleService
+import { UserRoleService } from '../user/user-role/user-role.service';  // Import UserRoleService
 import { CacheService } from '../cache/cache.service';  // Import CacheService
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '@prisma/client';

@@ -1,6 +1,6 @@
 // src/feature-tier/models/feature-tier.model.ts
 import { ObjectType, Field, Int } from '@nestjs/graphql';
-import { Feature } from '../../feature-access/models/feature-access.model';
+import { Feature } from '../../feature/models/feature.model';
 
 @ObjectType()
 export class FeatureTierModel {

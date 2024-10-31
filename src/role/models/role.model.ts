@@ -1,7 +1,7 @@
 // src/role/models/role.model.ts
 import { ObjectType, Field, Int, ID } from '@nestjs/graphql';
 import { Permission } from '@permission-model/permission.model';  // Assuming you have a Permission model
-import { UserRole } from '@user-role-model/user-role.model';  // Assuming you have a UserRole model
+import { UserRole } from '@user-service/user-role/models/user-role.model';  // Assuming you have a UserRole model
 import { RoleType } from '@prisma/client';  // Assuming RoleType enum is defined in Prisma
 
 @ObjectType()

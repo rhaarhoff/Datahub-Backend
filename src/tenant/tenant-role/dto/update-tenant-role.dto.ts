@@ -1,5 +1,5 @@
 // src/tenant/tenant-role/dto/update-tenant-role.dto.ts
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsArray } from 'class-validator';
 
 export class UpdateTenantRoleDto {
   @IsOptional()
@@ -7,6 +7,7 @@ export class UpdateTenantRoleDto {
   roleName?: string;
 
   @IsOptional()
-  @IsString({ each: true })
-  inheritedRoleIds?: string[];
+  @IsArray()
+  @IsInt({ each: true })  // Ensure all elements in the array are integers
+  inheritedRoleIds?: number[];
 }

@@ -3,7 +3,7 @@ import { PrismaService } from '@prisma-service/prisma.service';
 import { TenantRoleService } from './tenant-role/tenant-role.service'; // Import TenantRoleService
 import { SubscriptionService } from '../subscription/subscription.service'; // Import SubscriptionService
 import { FeatureAccessService } from '../feature-access/feature-access.service'; // Import FeatureAccessService
-import { UserRoleService } from '../user-role/user-role.service'; // Import UserRoleService
+import { UserRoleService } from '../user/user-role/user-role.service'; // Import UserRoleService
 import { CacheService } from '../cache/cache.service'; // Import CacheService
 import retry from 'async-retry';
 

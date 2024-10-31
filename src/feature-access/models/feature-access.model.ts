@@ -1,7 +1,7 @@
 import { ObjectType, Field, Int, ID } from '@nestjs/graphql';
 import { Tenant } from '../../tenant/models/tenant.model';
 import { Feature } from '../../feature/models/feature.model';
-import { UserRole } from '../../user-role/models/user-role.model';
+import { UserRole } from '../../user/user-role/models/user-role.model';
 import { AccessLevel } from '@prisma/client';
 import { IsOptional, IsEnum, IsDate, IsInt } from 'class-validator';
 

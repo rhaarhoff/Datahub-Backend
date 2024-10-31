@@ -152,6 +152,7 @@ model TenantRole {
   name        String // Tenant-specific role name (e.g., Manager, Employee)
   description String?
   tenantId    Int
+  inheritedRoleIds Int[]             // Array to store IDs of roles that this role inherits from
   permissions TenantPermission[] @relation("RolePermissions")
   users       UserRole[]         @relation("UserTenantRoles")
   createdAt   DateTime           @default(now())
@@ -170,6 +171,7 @@ model TenantPermission {
   tenantId    Int // Associated tenant
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -198,8 +200,8 @@ model Feature {
 model FeatureTier {
   id          Int       @id @default(autoincrement())
   name        String    @unique // The name of the tier (e.g., 'Basic', 'Pro', 'Enterprise')
-  description String // Optional description
-  deletedAt   DateTime? // Soft delete field
+  description String
+  deletedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -304,6 +306,15 @@ enum BillingCycle {
 
 // prisma/schema.prisma
 enum AuditAction {
+
+  // Tenant Permissions Management
+  CREATE_TENANT_PERMISSION // Logs when a tenant permission is created
+  ACCESS_TENANT_PERMISSION // Logs when a tenant permission is accessed
+  UPDATE_TENANT_PERMISSION // Logs when a tenant permission is updated
+  DELETE_TENANT_PERMISSION // Logs when a tenant permission is deleted
+  RESTORE_TENANT_PERMISSION // Logs when a tenant permission is restored
+  CLEAR_RECYCLE_BIN_TENANT_PERMISSION // Logs when a tenant permission is cleared from the recycle bin
+
   // User Management
   USER_CREATED // Logs user creation
   USER_DELETED // Logs user deletion

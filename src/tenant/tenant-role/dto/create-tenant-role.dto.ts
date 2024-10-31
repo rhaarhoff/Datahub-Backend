@@ -1,5 +1,5 @@
 // src/tenant/tenant-role/dto/create-tenant-role.dto.ts
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsArray } from 'class-validator';
 
 export class CreateTenantRoleDto {
   @IsString()
@@ -7,6 +7,7 @@ export class CreateTenantRoleDto {
   roleName: string;
 
   @IsOptional()
-  @IsString({ each: true })
-  inheritedRoleIds?: string[];  // Inherited roles if any
+  @IsArray()
+  @IsInt({ each: true })  // Ensure all elements in the array are integers
+  inheritedRoleIds?: number[];  // Inherited roles, if any, should be an array of integers
 }

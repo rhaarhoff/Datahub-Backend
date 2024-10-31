@@ -3,7 +3,7 @@ import { ObjectType, Field, ID } from '@nestjs/graphql';
 import { User } from '@user-model/user.model';
 import { TenantFeatureModel } from '@tenant-service/tenant-feature/models/tenant-feature.model'; 
 import { TenantStatus } from '@prisma/client';
-import { UserRole } from '@user-role-model/user-role.model';
+import { UserRole } from '@user-service/user-role/models/user-role.model';
 
 
 @ObjectType()

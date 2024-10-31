@@ -1,6 +1,6 @@
 import { Resolver, Query, Mutation, Args, Context } from '@nestjs/graphql';
 import { TenantFeatureService } from './tenant-feature.service';
-import { UpdateTenantFeatureInput } from './dto/update-tenant-feature.input';
+import { UpdateTenantFeatureInput } from './input/update-tenant-feature.input';
 import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 
 @Resolver('TenantFeature')
