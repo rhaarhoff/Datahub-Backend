@@ -235,6 +235,8 @@ model FeatureAccess {
   tenantId    Int
   userRoleId  Int
   accessLevel AccessLevel @default(NONE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   deletedAt   DateTime?
 
   userRole UserRole @relation("UserRoleFeatureAccess", fields: [userRoleId], references: [id], onDelete: NoAction)
@@ -359,6 +361,9 @@ enum AuditAction {
   ADD_ROLE // Logs when a Casbin role is added
   UPDATE_ROLE // Logs when a Casbin role is updated
   DELETE_ROLE // Logs when a Casbin role is deleted
+
+  // Default fallback action
+  DEFAULT
 }
 
 model Customer {

@@ -11,6 +11,9 @@ import { AuditAction, Prisma } from '@prisma/client';
 
 @Injectable()
 export class TenantPermissionService {
+  getCacheService(): any {
+    throw new Error('Method not implemented.');
+  }
   create(create: any) {
     throw new Error('Method not implemented.');
   }
@@ -23,7 +26,7 @@ export class TenantPermissionService {
   private readonly logger = new Logger(TenantPermissionService.name);
 
   // Prisma include configuration for related data
-  private readonly tenantPermissionWithRelations = {
+  public tenantPermissionWithRelations = {
     tenant: {
       include: {
         users: { select: { id: true, tenantId: true, createdAt: true, updatedAt: true, userId: true } },
@@ -35,7 +38,7 @@ export class TenantPermissionService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cacheService: CacheService,
+    public cacheService: CacheService,
     private readonly auditService: AuditService,
   ) { }
 
@@ -151,33 +154,37 @@ export class TenantPermissionService {
     );
   }
 
-  // Get all permissions for a specific tenant with caching logic
   async getPermissionsForTenant(tenantId: number, userId: number): Promise<TenantPermission[]> {
     // Generate a cache key for tenant permissions
     const cacheKey = this.cacheService.generateCacheKey('tenant', tenantId.toString(), 'permissions');
-
+  
     // Attempt to retrieve permissions from the cache
     let permissions = await this.cacheService.get<TenantPermission[]>(cacheKey);
     if (permissions) {
-      return permissions;
+      return permissions.map(permission => plainToInstance(TenantPermission, permission));
     }
-
+  
     // If not in cache, fetch from the database
     permissions = await this.prisma.tenantPermission.findMany({
       where: { tenantId },
       include: this.tenantPermissionWithRelations,
     });
-
-    if (permissions.length === 0) throw new NotFoundException(`No permissions found for tenant with ID ${tenantId}`);
-
+  
+    // If permissions are empty, throw NotFoundException
+    if (!permissions.length) {
+      throw new NotFoundException(`No permissions found for tenant with ID ${tenantId}`);
+    }
+  
     // Log the access action
     await this.auditAction(AuditAction.ACCESS_TENANT_PERMISSION, userId, tenantId, null, permissions);
-
+  
     // Store the permissions in the cache
     await this.cacheService.set(cacheKey, permissions);
-
+  
+    // Map each permission to an instance of TenantPermission
     return permissions.map(permission => plainToInstance(TenantPermission, permission));
   }
+  
 
   // Update an existing tenant permission
   async updateTenantPermission(id: number, updateTenantPermissionDto: UpdateTenantPermissionDto, userId: number, tenantId: number): Promise<TenantPermission> {

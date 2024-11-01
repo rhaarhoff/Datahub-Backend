@@ -93,7 +93,16 @@ export class TenantPermissionResolver {
     @Args('tenantId', { type: () => Int }) tenantId: number,
     @Args('userId', { type: () => Int }) userId: number,
   ): Promise<TenantPermission[]> {
-    return this.tenantPermissionService.getDeletedPermissions(tenantId);
+    const deletedPermissions = await this.tenantPermissionService.getDeletedPermissionsForTenant(tenantId);
+    return deletedPermissions.map(permission => ({
+      ...permission,
+      tenant: {
+        id: tenantId,
+        users: [], // Add appropriate default or fetched values
+        tenantFeatures: [], // Add appropriate default or fetched values
+        userRoles: [] // Add appropriate default or fetched values
+      }
+    }));
   }
 
   @Mutation(() => TenantPermission)
@@ -116,7 +125,7 @@ export class TenantPermissionResolver {
     @Args('tenantId', { type: () => Int }) tenantId: number,
     @Args('userId', { type: () => Int }) userId: number,
   ): Promise<boolean> {
-    await this.tenantPermissionService.clearRecycleBin(tenantId);
+    this.tenantPermissionService.clearRecycleBin(tenantId);
     return true;
   }
 }

@@ -1,11 +1,15 @@
-import { NestFactory } from '@nestjs/core';
+// main.ts
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
-import { TenantGuard } from './common/guards/tenant.guard'; 
-import { PrismaService } from './prisma/prisma.service'; 
-import { TenantService } from './tenant/tenant.service'; 
+import { TenantGuard } from './common/guards/tenant.guard';
+import { PrismaService } from './prisma/prisma.service';
+import { TenantService } from './tenant/tenant.service';
+import { AuditService } from './audit/audit.service';
+import { AuditLoggingInterceptor } from './common/interceptors/audit-logging/audit-logging.interceptor';
+import { ServiceLoggingInterceptor } from './common/interceptors/service-logging/service-logging.interceptor';
 
 async function bootstrap() {
   try {
@@ -48,6 +52,14 @@ async function bootstrap() {
     const tenantService = app.get(TenantService);
     const prismaService = app.get(PrismaService);
     app.useGlobalGuards(new TenantGuard(tenantService, prismaService));
+
+    // Register the AuditLoggingInterceptor and ServiceLoggingInterceptor globally
+    const reflector = app.get(Reflector);
+    const auditService = app.get(AuditService);
+    app.useGlobalInterceptors(
+      new AuditLoggingInterceptor(auditService, reflector),
+      new ServiceLoggingInterceptor(reflector), // Register the ServiceLoggingInterceptor
+    );
 
     // Start the HTTP server
     const port = process.env.PORT || 3000;

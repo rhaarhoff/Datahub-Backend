@@ -26,6 +26,14 @@ export class FeatureAccessModel {
   @IsEnum(AccessLevel)
   accessLevel: AccessLevel;
 
+  @Field(() => Date)
+  @IsDate()
+  createdAt: Date;
+
+  @Field(() => Date)
+  @IsDate()
+  updatedAt: Date;
+
   @Field(() => Date, { nullable: true })
   @IsOptional()
   @IsDate()

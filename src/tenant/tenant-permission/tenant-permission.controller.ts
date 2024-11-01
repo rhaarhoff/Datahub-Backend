@@ -1,4 +1,4 @@
-import { Controller, UseGuards, Post, Get, Put, Delete, Param, Body, ForbiddenException,  } from '@nestjs/common';
+import { Controller, UseGuards, Post, Get, Put, Delete, Param, Body, ForbiddenException, Query,  } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { TenantPermissionService } from './tenant-permission.service';
 import { CreateTenantPermissionDto } from './dto/create-tenant-permission.dto';
@@ -48,7 +48,7 @@ export class TenantPermissionController {
   @ApiResponse({ status: 403, description: 'Forbidden.' })
   async getPermissionsForTenant(
     @Param('tenantId') tenantId: number,
-    @Body('userId') userId: number,
+    @Query('userId') userId: number,
   ): Promise<TenantPermission[]> {
     await this.enforceAuthorization(userId, 'view', tenantId);
     return this.tenantPermissionService.getPermissionsForTenant(tenantId, userId);
@@ -89,12 +89,21 @@ export class TenantPermissionController {
   @ApiOperation({ summary: 'Get deleted permissions for a tenant' })
   @ApiResponse({ status: 200, description: 'List of deleted tenant permissions.', type: [TenantPermission] })
   @ApiResponse({ status: 403, description: 'Forbidden.' })
-  async getDeletedPermissions(
+  async getDeletedPermissionsForTenant(
     @Param('tenantId') tenantId: number,
     @Body('userId') userId: number,
   ): Promise<TenantPermission[]> {
     await this.enforceAuthorization(userId, 'view', tenantId);
-    return this.tenantPermissionService.getDeletedPermissions(tenantId);
+    const deletedPermissions = await this.tenantPermissionService.getDeletedPermissionsForTenant(tenantId);
+    return deletedPermissions.map(permission => ({
+      ...permission,
+      tenant: {
+        id: tenantId,
+        users: [], // Add appropriate default values or fetch actual data
+        tenantFeatures: [],
+        userRoles: []
+      }
+    }));
   }
 
   @Post('restore/:id')
@@ -121,7 +130,7 @@ export class TenantPermissionController {
     @Body('userId') userId: number,
   ): Promise<boolean> {
     await this.enforceAuthorization(userId, 'delete', tenantId);
-    await this.tenantPermissionService.clearRecycleBin(tenantId);
+    this.tenantPermissionService.clearRecycleBin(tenantId);
     return true;
   }
 }

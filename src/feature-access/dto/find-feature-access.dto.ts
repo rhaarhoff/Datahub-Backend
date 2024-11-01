@@ -1,16 +1,20 @@
-import { IsInt, IsEnum } from 'class-validator';
+import { IsInt, IsEnum, IsOptional } from 'class-validator';
 import { AccessLevel } from '@prisma/client';
 
 export class FindFeatureAccessDto {
   @IsInt()
-  userRoleId: number;
+  @IsOptional()
+  userRoleId?: number;
 
   @IsInt()
-  featureId: number;
+  @IsOptional()
+  featureId?: number;
 
   @IsInt()
-  tenantId: number;
+  @IsOptional()
+  tenantId?: number;
 
   @IsEnum(AccessLevel)
-  accessLevel: AccessLevel;
+  @IsOptional()
+  accessLevel?: AccessLevel;
 }

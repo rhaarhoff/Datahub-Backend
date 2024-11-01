@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsInt } from 'class-validator';
 import { AccessLevel } from '@prisma/client';
 
 export class UpdateFeatureAccessDto {
@@ -6,12 +6,15 @@ export class UpdateFeatureAccessDto {
   @IsEnum(AccessLevel)
   accessLevel?: AccessLevel;
 
+  @IsInt()
   @IsNotEmpty()
   featureId: number;
 
+  @IsInt()
   @IsNotEmpty()
   tenantId: number;
 
+  @IsInt()
   @IsNotEmpty()
   userRoleId: number;
 }

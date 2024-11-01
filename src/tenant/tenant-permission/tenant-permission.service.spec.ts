@@ -6,7 +6,7 @@ import { CacheService } from '../../cache/cache.service';
 import { CreateTenantPermissionDto } from './dto/create-tenant-permission.dto';
 import { UpdateTenantPermissionDto } from './dto/update-tenant-permission.dto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { Prisma, Tenant, TenantPermission } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 jest.mock('async-retry', () => ({
   __esModule: true,

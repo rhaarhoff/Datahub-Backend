@@ -61,10 +61,7 @@ export class SubscriptionService {
       // Step 2: Update feature access for the tenant's roles
       await this.featureAccessService.updateFeatureAccessForRoles(tenantId);
 
-      // Step 3: Update feature access for the tenant's roles
-      await this.featureAccessService.updateFeatureAccessForRoles(tenantId);
-
-      // Step 4: Update user roles to reflect the updated subscription features
+      // Step 3: Update user roles to reflect the updated subscription features
       await this.userRoleService.updateRolesForSubscriptionChange(tenantId);
 
       // Cache Invalidation Step: Invalidate cache for tenant's feature access and features

@@ -6,13 +6,13 @@ import { Buffer } from 'buffer';
 
 @Injectable()
 export class CacheService {
-  private readonly logger = new Logger(CacheService.name);
-  private readonly defaultTTL: number;
-  private readonly maxAllowedTTL: number = 86400; // 24 hours
+  public logger = new Logger(CacheService.name);
+  public defaultTTL: number;
+  public maxAllowedTTL: number = 86400; // 24 hours
 
   constructor(
-    @Inject(CACHE_MANAGER) private readonly cacheManager: CacheStore, // Explicitly casting to CacheStore
-    private readonly configService: ConfigService,
+    @Inject(CACHE_MANAGER) public cacheManager: CacheStore, // Explicitly casting to CacheStore
+    public configService: ConfigService,
   ) {
     this.defaultTTL = this.configService.get<number>('ttl.default', 3600);
   }
