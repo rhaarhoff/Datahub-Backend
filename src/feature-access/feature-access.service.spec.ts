@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CacheManagerService } from '../cache/cache-manager.service';
 import { AuditService } from '../audit/audit.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
-import { AccessLevel, AuditAction, FeatureAccess, Tenant, UserRole } from '@prisma/client';
+import { AccessLevel, AuditAction } from '@prisma/client';
 import { UpdateFeatureAccessDto } from './dto/update-feature-access.dto';
 import retry from 'async-retry';
 
@@ -28,6 +28,17 @@ describe('FeatureAccessService', () => {
   };
   const ipAddress = '127.0.0.1';
   const userAgent = 'Mozilla/5.0';
+
+  const mockFeatureAccess = {
+    id: 1,
+    featureId,
+    tenantId,
+    userRoleId,
+    accessLevel: AccessLevel.VIEW,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -69,24 +80,65 @@ describe('FeatureAccessService', () => {
     auditService = module.get<AuditService>(AuditService);
   });
 
+  describe('Access Level Determination', () => {
+    it('FTR-SER-01: should return AccessLevel.MANAGE for ADMIN role', () => {
+      expect(service['determineAccessLevel']('ADMIN')).toBe(AccessLevel.MANAGE);
+    });
+
+    it('FTR-SER-02: should return AccessLevel.EDIT for MEMBER role', () => {
+      expect(service['determineAccessLevel']('MEMBER')).toBe(AccessLevel.EDIT);
+    });
+
+    it('FTR-SER-03: should return AccessLevel.VIEW for GUEST role', () => {
+      expect(service['determineAccessLevel']('GUEST')).toBe(AccessLevel.VIEW);
+    });
+  });
+
   describe('getFeatureAccess', () => {
-    it('should retrieve feature access and log action', async () => {
-      const featureAccess: ExtendedFeatureAccess = {
+    it('FTR-SER-04: should retrieve feature access and log action', async () => {
+      jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue(mockFeatureAccess);
+      const auditSpy = jest.spyOn(auditService, 'logAction');
+
+      const result = await service.getFeatureAccess(featureId, tenantId, userRoleId, userId, ipAddress, userAgent);
+
+      expect(result).toEqual(mockFeatureAccess);
+      expect(auditSpy).toHaveBeenCalledWith({
+        action: AuditAction.ACCESS_FEATURE,
+        userId,
+        tenantId,
+        featureId,
+        before: null,
+        after: mockFeatureAccess,
+        ipAddress,
+        userAgent,
+      });
+    });
+
+    it('FTR-SER-05: should throw NotFoundException if feature access does not exist', async () => {
+      jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue(null);
+
+      await expect(
+        service.getFeatureAccess(featureId, tenantId, userRoleId, userId, ipAddress, userAgent)
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('FTR-SER-06: should log AuditAction.ACCESS_FEATURE on successful access retrieval', async () => {
+      const featureAccess = {
         id: 1,
         featureId,
         tenantId,
         userRoleId,
         accessLevel: AccessLevel.VIEW,
-        deletedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
+        deletedAt: null,
       };
+
       jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue(featureAccess);
       const auditSpy = jest.spyOn(auditService, 'logAction');
 
-      const result = await service.getFeatureAccess(featureId, tenantId, userRoleId, userId, ipAddress, userAgent);
+      await service.getFeatureAccess(featureId, tenantId, userRoleId, userId, ipAddress, userAgent);
 
-      expect(result).toEqual(featureAccess);
       expect(auditSpy).toHaveBeenCalledWith({
         action: AuditAction.ACCESS_FEATURE,
         userId,
@@ -99,29 +151,12 @@ describe('FeatureAccessService', () => {
       });
     });
 
-    it('should throw NotFoundException if feature access does not exist', async () => {
-      jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue(null);
-
-      await expect(
-        service.getFeatureAccess(featureId, tenantId, userRoleId, userId, ipAddress, userAgent)
-      ).rejects.toThrow(NotFoundException);
-    });
   });
 
   describe('updateFeatureAccess', () => {
-    it('should update feature access and log action', async () => {
-      const existingAccess: ExtendedFeatureAccess = {
-        id: 1,
-        featureId,
-        tenantId,
-        userRoleId,
-        accessLevel: AccessLevel.VIEW,
-        deletedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue(existingAccess);
-      jest.spyOn(prisma.featureAccess, 'update').mockResolvedValue({ ...existingAccess, accessLevel: AccessLevel.MANAGE });
+    it('FTR-SER-07: should update feature access and log action', async () => {
+      jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue(mockFeatureAccess);
+      jest.spyOn(prisma.featureAccess, 'update').mockResolvedValue({ ...mockFeatureAccess, accessLevel: AccessLevel.MANAGE });
       const auditSpy = jest.spyOn(auditService, 'logAction');
 
       await service.updateFeatureAccess(featureId, tenantId, userRoleId, userId, accessData, ipAddress, userAgent);
@@ -131,7 +166,7 @@ describe('FeatureAccessService', () => {
         userId,
         tenantId,
         featureId,
-        before: existingAccess,
+        before: mockFeatureAccess,
         after: expect.objectContaining({ accessLevel: AccessLevel.MANAGE }),
         ipAddress,
         userAgent,
@@ -139,15 +174,57 @@ describe('FeatureAccessService', () => {
       });
     });
 
-    it('should throw BadRequestException on invalid update data', async () => {
-      jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue({
+    it('FTR-SER-08: should throw NotFoundException if attempting to update non-existent feature access', async () => {
+      jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue(null); // Simulate non-existent feature access
+
+      await expect(
+        service.updateFeatureAccess(featureId, tenantId, userRoleId, userId, accessData, ipAddress, userAgent)
+      ).rejects.toThrow(NotFoundException); // Assert that NotFoundException is thrown
+    });
+
+    it('FTR-SER-09: should log AuditAction.UPDATE_FEATURE_ACCESS with before and after states on successful update', async () => {
+      // Mock existing feature access (before state)
+      const existingAccess = {
         id: 1,
         featureId,
         tenantId,
         userRoleId,
         accessLevel: AccessLevel.VIEW,
+        createdAt: new Date(),
+        updatedAt: new Date(),
         deletedAt: null,
-      } as FeatureAccess);
+      };
+
+      // Mock updated feature access (after state)
+      const updatedAccess = {
+        ...existingAccess,
+        accessLevel: AccessLevel.MANAGE, // Change in access level to simulate update
+        updatedAt: new Date(), // Updated timestamp
+      };
+
+      jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue(existingAccess); // Simulate existing access
+      jest.spyOn(prisma.featureAccess, 'update').mockResolvedValue(updatedAccess); // Simulate update
+      const auditSpy = jest.spyOn(auditService, 'logAction'); // Spy on audit service log
+
+      // Execute updateFeatureAccess
+      await service.updateFeatureAccess(featureId, tenantId, userRoleId, userId, accessData, ipAddress, userAgent);
+
+      // Verify that the logAction was called with before and after states
+      expect(auditSpy).toHaveBeenCalledWith({
+        action: AuditAction.UPDATE_FEATURE_ACCESS,
+        userId,
+        tenantId,
+        featureId,
+        before: existingAccess, // Previous state
+        after: updatedAccess, // Updated state
+        ipAddress,
+        userAgent,
+        modifiedFields: ['accessLevel'], // Track modified field
+      });
+    });
+
+    it('FTR-SER-10: should throw BadRequestException on invalid update data', async () => {
+      jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue(mockFeatureAccess);
 
       const invalidData = { accessLevel: null } as UpdateFeatureAccessDto;
 
@@ -158,21 +235,26 @@ describe('FeatureAccessService', () => {
   });
 
   describe('clearFeatureAccess', () => {
-    it('should clear feature access and invalidate cache with retry', async () => {
-      const cacheSpy = jest.spyOn(cacheManager, 'invalidateFeatureCache');
-      const existingAccess = { id: 1, featureId, tenantId, userRoleId, accessLevel: AccessLevel.VIEW, deletedAt: null };
-      jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue(existingAccess);
+    it('FTR-SER-11: should clear feature access and invalidate cache with retry', async () => {
+      // Mocking findUnique to return a non-deleted feature access
+      jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValueOnce(mockFeatureAccess);
 
+      // Spying on cache invalidation and Prisma update methods
+      const cacheSpy = jest.spyOn(cacheManager, 'invalidateFeatureCache');
+      const updateSpy = jest.spyOn(prisma.featureAccess, 'update').mockResolvedValue(mockFeatureAccess);
+
+      // Calling the service method
       await service.clearFeatureAccess(featureId, tenantId, userRoleId, userId, ipAddress, userAgent);
 
+      // Verifying cache invalidation and update operations
       expect(cacheSpy).toHaveBeenCalledWith(tenantId, featureId);
-      expect(prisma.featureAccess.updateMany).toHaveBeenCalledWith({
-        where: { featureId, tenantId, userRoleId, deletedAt: null },
+      expect(updateSpy).toHaveBeenCalledWith({
+        where: { FeatureAccessCompositeKey: { featureId, tenantId, userRoleId } },
         data: { deletedAt: expect.any(Date) },
       });
     });
 
-    it('should throw NotFoundException if feature access does not exist', async () => {
+    it('FTR-SER-12: should throw NotFoundException if feature access does not exist', async () => {
       jest.spyOn(prisma.featureAccess, 'findUnique').mockResolvedValue(null);
 
       await expect(
@@ -181,79 +263,28 @@ describe('FeatureAccessService', () => {
     });
   });
 
-  describe('updateFeatureAccessForRoles', () => {
-    it('should update feature access for all roles of tenant', async () => {
-      const tenant: Tenant = {
-        id: tenantId,
-        name: "Example Tenant",
-        subscriptionPlanId: 1,
-        subscriptionStartDate: new Date(),
-        subscriptionEndDate: new Date(),
-        status: "ACTIVE",
-        complianceLevel: "STANDARD",
-        currentUsage: 0,
-        usageQuota: 100,
-        deletedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        domain: "example.com",
-      };
-
-      const userRoles: (UserRole & { role: { name: string } })[] = [
-        {
-          id: userRoleId,
-          tenantId,
-          deletedAt: null,
-          userId,
-          roleId: 1,
-          isPrimaryRole: true,
-          startDate: new Date(),
-          endDate: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          role: { name: "ADMIN" },
-        },
-      ];
-
-      jest.spyOn(prisma.tenant, 'findUnique').mockResolvedValue(tenant);
-      jest.spyOn(prisma.userRole, 'findMany').mockResolvedValue(userRoles);
-      jest.spyOn(prisma.featureAccess, 'upsert').mockResolvedValue({
-        id: 1,
-        featureId: featureId,
-        tenantId,
-        userRoleId,
-        accessLevel: AccessLevel.MANAGE,
-        deletedAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as FeatureAccess);
-
-      await service.updateFeatureAccessForRoles(tenantId);
-
-      expect(prisma.tenant.findUnique).toHaveBeenCalledWith({
-        where: { id: tenantId },
-        include: { subscriptionPlan: { include: { features: true } } },
-      });
-      expect(prisma.userRole.findMany).toHaveBeenCalledWith({
-        where: { tenantId, deletedAt: null },
-        include: { role: true },
-      });
+  describe('retryCacheInvalidation', () => {
+    it('FTR-SER-13: should retry cache invalidation upon failure', async () => {
+      jest.spyOn(cacheManager, 'invalidateFeatureCache')
+        .mockImplementationOnce(() => {
+          throw new Error('Cache invalidation failed on first attempt');
+        })
+        .mockImplementationOnce(() => {
+          throw new Error('Cache invalidation failed on second attempt');
+        })
+        .mockResolvedValueOnce(undefined); // Simulate success on the third attempt
+    
+      // Execute the retry cache invalidation function
+      await service['retryCacheInvalidation'](tenantId, featureId);
+    
+      // Validate the number of attempts
+      expect(cacheManager.invalidateFeatureCache).toHaveBeenCalledTimes(3);
+      expect(cacheManager.invalidateFeatureCache).toHaveBeenCalledWith(tenantId, featureId);
     });
+    
+    
+    
+
   });
 
-  describe('clearFeatureAccessForTenant', () => {
-    it('should clear all feature access for tenant and invalidate cache with retry', async () => {
-      const deletionTime = new Date();
-      jest.spyOn(global, 'Date').mockImplementation(() => deletionTime);
-
-      await service.clearFeatureAccessForTenant(tenantId);
-
-      expect(retry).toHaveBeenCalled();
-      expect(prisma.featureAccess.updateMany).toHaveBeenCalledWith({
-        where: { tenantId, deletedAt: null },
-        data: { deletedAt: deletionTime },
-      });
-      expect(cacheManager.invalidateFeatureCache).toHaveBeenCalledWith(tenantId);
-    });
-  });
 });

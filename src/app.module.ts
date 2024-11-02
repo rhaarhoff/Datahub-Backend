@@ -33,6 +33,7 @@ import { AuditResolver } from './audit/audit.resolver';
 import { CasbinHelperService } from './casbin-integration/casbin-helper.service';
 import { TenantRoleModule } from './tenant/tenant-role/tenant-role.module';
 import { Authorize } from './common/decorators/authorize/authorize.decorator';
+import { QueueModule } from './queue/queue.module';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { Authorize } from './common/decorators/authorize/authorize.decorator';
     RedisCacheModule,
     FeatureAccessModule,
     TenantRoleModule,
+    QueueModule,
   ],
   controllers: [SubscriptionController, HealthController, FeatureTierController, AuditController],
   providers: [

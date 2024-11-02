@@ -6,6 +6,7 @@ import { AuditAction, AccessLevel } from '@prisma/client';
 import { CacheClearException } from '../common/exceptions/cache-clear.exception';
 import { UpdateFeatureAccessDto } from './dto/update-feature-access.dto';
 import * as retry from 'async-retry';
+import { ServiceLog } from '@decorators/service-log/service-log.decorator';
 
 @Injectable()
 export class FeatureAccessService {
@@ -39,8 +40,8 @@ export class FeatureAccessService {
     return featureAccess;
   }
 
+  @ServiceLog('Retrieve feature access')
   async getFeatureAccess(featureId: number, tenantId: number, userRoleId: number, userId: number, ipAddress: string, userAgent: string) {
-    this.logger.log(`Retrieving access for feature ID ${featureId}, tenant ${tenantId}, and user role ${userRoleId}`);
     const featureAccess = await this.findFeatureAccessOrThrow(featureId, tenantId, userRoleId);
 
     await this.logAuditAction({
@@ -57,9 +58,8 @@ export class FeatureAccessService {
     return featureAccess;
   }
 
+  @ServiceLog('Update feature access level')
   async updateFeatureAccess(featureId: number, tenantId: number, userRoleId: number, userId: number, accessData: UpdateFeatureAccessDto, ipAddress: string, userAgent: string) {
-    this.logger.log(`Updating access for feature ID ${featureId}, tenant ${tenantId}, user role ${userRoleId}`);
-    
     if (!accessData?.accessLevel || !featureId || !tenantId || !userRoleId) {
       throw new BadRequestException(`Invalid access data provided for feature update`);
     }
@@ -86,8 +86,8 @@ export class FeatureAccessService {
     return updatedAccess;
   }  
 
+  @ServiceLog('Clear feature access')
   async clearFeatureAccess(featureId: number, tenantId: number, userRoleId: number, userId: number, ipAddress: string, userAgent: string) {
-    this.logger.log(`Clearing access for feature ID ${featureId}, tenant ${tenantId}, user role ${userRoleId}`);
     const existingAccess = await this.findFeatureAccessOrThrow(featureId, tenantId, userRoleId);
 
     await this.prisma.featureAccess.update({
@@ -114,7 +114,7 @@ export class FeatureAccessService {
       await retry(async () => {
         await this.cacheManagerService.invalidateFeatureCache(tenantId, featureId);
       }, {
-        retries: 3,
+        retries: 2,
         onRetry: (err, attempt) => this.logger.warn(`Retry attempt ${attempt} for cache invalidation: ${(err as Error).message}`),
       });
     } catch (error: unknown) {
