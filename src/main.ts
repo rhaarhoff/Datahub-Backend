@@ -10,10 +10,13 @@ import { TenantService } from './tenant/tenant.service';
 import { AuditService } from './audit/audit.service';
 import { AuditLoggingInterceptor } from './common/interceptors/audit-logging/audit-logging.interceptor';
 import { ServiceLoggingInterceptor } from './common/interceptors/service-logging/service-logging.interceptor';
+import { MetricsInterceptor } from './common/interceptors/metrics/metrics.interceptor';
+import * as Prometheus from 'prom-client';
+import * as express from 'express';
+import Redis from 'ioredis';
 
 async function bootstrap() {
   try {
-    // Create the main application
     const app = await NestFactory.create(AppModule);
 
     // Global validation pipes
@@ -53,13 +56,21 @@ async function bootstrap() {
     const prismaService = app.get(PrismaService);
     app.useGlobalGuards(new TenantGuard(tenantService, prismaService));
 
-    // Register the AuditLoggingInterceptor and ServiceLoggingInterceptor globally
+    // Register global interceptors
     const reflector = app.get(Reflector);
     const auditService = app.get(AuditService);
     app.useGlobalInterceptors(
       new AuditLoggingInterceptor(auditService, reflector),
-      new ServiceLoggingInterceptor(reflector), // Register the ServiceLoggingInterceptor
+      new ServiceLoggingInterceptor(reflector),
+      new MetricsInterceptor(),
     );
+
+    // Create a Redis client using ioredis for BullMQ and microservice
+    const redisClient = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT, 10) || 6379,
+      password: process.env.REDIS_PASSWORD || undefined,
+    });
 
     // Start the HTTP server
     const port = process.env.PORT || 3000;
@@ -69,22 +80,24 @@ async function bootstrap() {
 
     // Enable graceful shutdown hooks
     app.enableShutdownHooks();
-    prismaService.enableShutdownHooks(app); // Enable Prisma shutdown hooks
+    prismaService.enableShutdownHooks(app);
 
     // Set up the Redis microservice
-    setupMicroservice(app);
+    setupMicroservice(app, redisClient);
+
+    // Configure and serve Prometheus metrics on port 4000
+    setupMetricsServer();
   } catch (error) {
     console.error('Error during application bootstrap:', error);
-    process.exit(1); // Exit the process with failure
+    process.exit(1);
   }
 }
 
-function setupMicroservice(app) {
+function setupMicroservice(app, redisClient: Redis) {
   const microservice = app.connectMicroservice({
     transport: Transport.REDIS,
     options: {
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT, 10) || 6379,
+      url: `redis://${redisClient.options.host}:${redisClient.options.port}`,
       retryAttempts: 5,
       retryDelay: 1000,
     },
@@ -92,6 +105,22 @@ function setupMicroservice(app) {
 
   microservice.listen(() => {
     console.log('Redis microservice is listening for messages');
+  });
+}
+
+function setupMetricsServer() {
+  const metricsApp = express();
+  const metricsPort = process.env.METRICS_PORT || 4000;
+
+  Prometheus.collectDefaultMetrics(); // Collect default metrics
+
+  metricsApp.get('/metrics', async (req, res) => {
+    res.set('Content-Type', Prometheus.register.contentType);
+    res.end(await Prometheus.register.metrics());
+  });
+
+  metricsApp.listen(metricsPort, () => {
+    console.log(`Prometheus metrics available at http://localhost:${metricsPort}/metrics`);
   });
 }
 

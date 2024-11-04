@@ -34,6 +34,8 @@ import { CasbinHelperService } from './casbin-integration/casbin-helper.service'
 import { TenantRoleModule } from './tenant/tenant-role/tenant-role.module';
 import { Authorize } from './common/decorators/authorize/authorize.decorator';
 import { QueueModule } from './queue/queue.module';
+import { NotificationHubModule } from './notification-hub/notification-hub.module';
+import { ConfigModule } from './config/config.module';
 
 @Module({
   imports: [
@@ -69,6 +71,8 @@ import { QueueModule } from './queue/queue.module';
     FeatureAccessModule,
     TenantRoleModule,
     QueueModule,
+    NotificationHubModule,
+    ConfigModule,
   ],
   controllers: [SubscriptionController, HealthController, FeatureTierController, AuditController],
   providers: [

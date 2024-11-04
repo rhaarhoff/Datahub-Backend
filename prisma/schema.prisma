@@ -27,52 +27,60 @@ model CasbinRule {
 }
 
 model Tenant {
-  id                    Int                @id @default(autoincrement())
-  name                  String             @unique
-  domain                String?            @unique
-  status                TenantStatus       @default(ACTIVE)
-  subscriptionPlanId    Int?
-  subscriptionStartDate DateTime?
-  subscriptionEndDate   DateTime?
-  complianceLevel       String? // Tracking compliance requirements (e.g., HIPAA, GDPR)
-  currentUsage          Int? // Usage tracking for ABAC
-  usageQuota            Int? // Usage quota for ABAC
-  subscriptionPlan      SubscriptionPlan?  @relation("TenantSubscriptionPlan", fields: [subscriptionPlanId], references: [id], onDelete: NoAction)
-  users                 UserTenant[]       @relation("TenantUsers")
-  tenantFeatures        TenantFeature[]    @relation("TenantFeatures")
-  userRoles             UserRole[]         @relation("TenantUserRoles")
-  tenantRoles           TenantRole[]       @relation("TenantRoles")
-  tenantPermissions     TenantPermission[] @relation("TenantPermissions")
-  auditLogs             AuditLog[]         @relation("TenantAuditLogs")
-  deletedAt             DateTime?
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
-  TenantPermission      TenantPermission[]
-  TenantRole            TenantRole[]
-  CasbinRule            CasbinRule[]
-  FeatureAccess         FeatureAccess[]
+  id                               Int                                @id @default(autoincrement())
+  name                             String                             @unique
+  domain                           String?                            @unique
+  status                           TenantStatus                       @default(ACTIVE)
+  subscriptionPlanId               Int?
+  subscriptionStartDate            DateTime?
+  subscriptionEndDate              DateTime?
+  complianceLevel                  String? // Tracking compliance requirements (e.g., HIPAA, GDPR)
+  currentUsage                     Int? // Usage tracking for ABAC
+  usageQuota                       Int? // Usage quota for ABAC
+  subscriptionPlan                 SubscriptionPlan?                  @relation("TenantSubscriptionPlan", fields: [subscriptionPlanId], references: [id], onDelete: NoAction)
+  users                            UserTenant[]                       @relation("TenantUsers")
+  tenantFeatures                   TenantFeature[]                    @relation("TenantFeatures")
+  userRoles                        UserRole[]                         @relation("TenantUserRoles")
+  tenantRoles                      TenantRole[]                       @relation("TenantRoles")
+  tenantPermissions                TenantPermission[]                 @relation("TenantPermissions")
+  auditLogs                        AuditLog[]                         @relation("TenantAuditLogs")
+  deletedAt                        DateTime?
+  createdAt                        DateTime                           @default(now())
+  updatedAt                        DateTime                           @updatedAt
+  TenantPermission                 TenantPermission[]
+  TenantRole                       TenantRole[]
+  CasbinRule                       CasbinRule[]
+  FeatureAccess                    FeatureAccess[]
+  MessagingProvider                MessagingProvider[]
+  NotificationTemplate             NotificationTemplate[]
+  UserNotificationPreference       UserNotificationPreference[]
+  NotificationLog                  NotificationLog[]
+  TenantFeatureNotificationChannel TenantFeatureNotificationChannel[]
 
   @@index([subscriptionPlanId])
 }
 
 model User {
-  id               Int          @id @default(autoincrement())
-  email            String       @unique
-  name             String?
-  phone            String?
-  githubId         String?      @unique
-  microsoftId      String?      @unique
-  profileImageUrl  String?
-  password         String
-  lastLogin        DateTime?
-  tenants          UserTenant[] @relation("UserTenants")
-  roles            UserRole[]   @relation("UserRoles")
-  auditLogs        AuditLog[]   @relation("UserAuditLogs")
-  impersonatorLogs AuditLog[]   @relation("ImpersonatorAuditLogs")
-  impersonatedLogs AuditLog[]   @relation("ImpersonatedAuditLogs")
-  deletedAt        DateTime? // Soft delete field
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id                         Int                          @id @default(autoincrement())
+  email                      String                       @unique
+  name                       String?
+  phone                      String?
+  githubId                   String?                      @unique
+  microsoftId                String?                      @unique
+  profileImageUrl            String?
+  timeZone                   String?
+  password                   String
+  lastLogin                  DateTime?
+  tenants                    UserTenant[]                 @relation("UserTenants")
+  roles                      UserRole[]                   @relation("UserRoles")
+  auditLogs                  AuditLog[]                   @relation("UserAuditLogs")
+  impersonatorLogs           AuditLog[]                   @relation("ImpersonatorAuditLogs")
+  impersonatedLogs           AuditLog[]                   @relation("ImpersonatedAuditLogs")
+  deletedAt                  DateTime? // Soft delete field
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime                     @updatedAt
+  UserNotificationPreference UserNotificationPreference[]
+  NotificationLog            NotificationLog[]
 
   @@index([githubId])
   @@index([microsoftId])
@@ -148,15 +156,15 @@ model UserTenant {
 }
 
 model TenantRole {
-  id          Int                @id @default(autoincrement())
-  name        String // Tenant-specific role name (e.g., Manager, Employee)
-  description String?
-  tenantId    Int
-  inheritedRoleIds Int[]             // Array to store IDs of roles that this role inherits from
-  permissions TenantPermission[] @relation("RolePermissions")
-  users       UserRole[]         @relation("UserTenantRoles")
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id               Int                @id @default(autoincrement())
+  name             String // Tenant-specific role name (e.g., Manager, Employee)
+  description      String?
+  tenantId         Int
+  inheritedRoleIds Int[] // Array to store IDs of roles that this role inherits from
+  permissions      TenantPermission[] @relation("RolePermissions")
+  users            UserRole[]         @relation("UserTenantRoles")
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -195,6 +203,8 @@ model Feature {
   SubscriptionPlan SubscriptionPlan[] @relation("PlanFeatures")
 
   AuditLog AuditLog[]
+
+  TenantFeatureNotificationChannel TenantFeatureNotificationChannel[]
 }
 
 model FeatureTier {
@@ -249,17 +259,18 @@ model FeatureAccess {
 }
 
 model SubscriptionPlan {
-  id              Int          @id @default(autoincrement())
-  name            String       @unique
-  description     String
-  price           Float
-  billingCycle    BillingCycle @default(MONTHLY)
-  trialPeriodDays Int? // Optional field to offer trial periods
-  tenants         Tenant[]     @relation("TenantSubscriptionPlan")
-  features        Feature[]    @relation("PlanFeatures")
-  deletedAt       DateTime? // Soft delete field
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  id                                  Int                                   @id @default(autoincrement())
+  name                                String                                @unique
+  description                         String
+  price                               Float
+  billingCycle                        BillingCycle                          @default(MONTHLY)
+  trialPeriodDays                     Int? // Optional field to offer trial periods
+  tenants                             Tenant[]                              @relation("TenantSubscriptionPlan")
+  features                            Feature[]                             @relation("PlanFeatures")
+  deletedAt                           DateTime? // Soft delete field
+  createdAt                           DateTime                              @default(now())
+  updatedAt                           DateTime                              @updatedAt
+  SubscriptionPlanNotificationChannel SubscriptionPlanNotificationChannel[]
 
   @@index([billingCycle])
 }
@@ -308,7 +319,6 @@ enum BillingCycle {
 
 // prisma/schema.prisma
 enum AuditAction {
-
   // Tenant Permissions Management
   CREATE_TENANT_PERMISSION // Logs when a tenant permission is created
   ACCESS_TENANT_PERMISSION // Logs when a tenant permission is accessed
@@ -365,6 +375,168 @@ enum AuditAction {
   // Default fallback action
   DEFAULT
 }
+
+// Messaging and Notification Management
+model MessagingProvider {
+  id              Int     @id @default(autoincrement())
+  tenantId        Int
+  providerType    String // "ONESIGNAL", "TWILIO", "META_WHATSAPP", "META_MESSENGER"
+  integrationType String? // e.g., "SMS", "WhatsApp"
+
+  // Individual fields for config properties
+  apiUrl     String // Base URL for API requests
+  apiKey     String // API key for provider access, ideally encrypted
+  webhookUrl String? // Webhook URL if applicable
+  authToken  String? // Optional auth token for secondary authorization
+
+  isActive           Boolean   @default(true)
+  isPrimary          Boolean   @default(true)
+  fallbackProviderId Int? // Optional link to a secondary provider in case of primary failure
+
+  // Health and rate-limiting fields
+  healthScore        Float? // Calculated score based on provider performance
+  lastChecked        DateTime?
+  rateLimit          Int? // Provider's API call limit per minute/hour
+  averageRate        Int? // Sustained requests per minute/hour
+  burstRate          Int? // Burst requests allowed in quick succession
+  retryAfter         Int? // Retry after X seconds for exceeding rate
+  rateResetInterval  Int? // Time in seconds for rate reset
+  
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  ProviderHealthLog     ProviderHealthLog[]
+  ProviderHealthSummary ProviderHealthSummary[]
+
+  fallbackProvider                    MessagingProvider?                    @relation("FallbackProvider", fields: [fallbackProviderId], references: [id], onDelete: SetNull)
+  TenantFeatureNotificationChannel    TenantFeatureNotificationChannel[]
+  SubscriptionPlanNotificationChannel SubscriptionPlanNotificationChannel[]
+  MessagingProvider                   MessagingProvider[]                   @relation("FallbackProvider")
+
+  @@unique([tenantId, providerType, integrationType])
+}
+
+model NotificationTemplate {
+  id              Int      @id @default(autoincrement())
+  tenantId        Int
+  templateType    String // "WELCOME_MESSAGE", "REMINDER"
+  content         String // Message content with placeholders like "{{username}}"
+  channel         String // "PUSH", "EMAIL", "SMS", "WHATSAPP"
+  providerType    String? // Optional, e.g., "ONESIGNAL", "TWILIO"
+  variant         String? // A/B variant identifier
+  engagementScore Float? // A/B testing engagement score
+  language        String? // Language code (e.g., "en", "fr")
+  templateFormat  String? // "HTML", "Markdown", "Plain Text"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, templateType, channel, providerType, variant, language])
+}
+
+model UserNotificationPreference {
+  id                     Int       @id @default(autoincrement())
+  tenantId               Int
+  userId                 Int
+  preferredChannelIds    Int[] // Array of IDs referencing TenantFeatureNotificationChannel
+  frequency              String // "INSTANT", "DAILY", "WEEKLY"
+  consentStatus          Boolean   @default(true)
+  messageType            String?
+  lastUpdated            DateTime  @updatedAt
+  doNotDisturb           Boolean?  @default(false)
+  doNotDisturbStart      DateTime?
+  doNotDisturbEnd        DateTime?
+  preferredStartTime     DateTime?
+  preferredEndTime       DateTime?
+  maxNotificationsPerDay Int?
+  lastNotifiedAt         DateTime?
+  tenant                 Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId, messageType])
+}
+
+model NotificationLog {
+  id           Int       @id @default(autoincrement())
+  tenantId     Int
+  userId       Int
+  providerType String // "ONESIGNAL", "TWILIO"
+  channel      String // "PUSH", "EMAIL", "SMS", "WHATSAPP"
+  messageType  String // "WELCOME_MESSAGE", "ALERT"
+  status       String // "SENT", "FAILED", "RETRY"
+  error        String? // Error message if any
+  retryCount   Int       @default(0)
+  trackingId   String? // Unique ID for specific message tracking
+  ipAddress    String? // IP address of the request origin
+  userAgent    String? // User agent of the client making the reques
+  scheduledAt  DateTime? // Scheduled notifications
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProviderHealthLog {
+  id           Int               @id @default(autoincrement())
+  providerId   Int
+  healthScore  Float // Calculated health score
+  responseTime Float // Average response time in milliseconds
+  errorRate    Float // Error percentage over period
+  status       String // "HEALTHY", "UNHEALTHY"
+  checkedAt    DateTime          @default(now())
+  provider     MessagingProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
+
+model ProviderHealthSummary {
+  id                  Int               @id @default(autoincrement())
+  providerId          Int
+  averageHealthScore  Float // Avg health score over period
+  averageResponseTime Float // Avg response time over period
+  errorRate           Float // Avg error rate over period
+  healthTrend         String? // "IMPROVING", "DETERIORATING"
+  periodStart         DateTime
+  periodEnd           DateTime
+  provider            MessagingProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
+
+model TenantFeatureNotificationChannel {
+  id                 Int      @id @default(autoincrement())
+  tenantId           Int
+  featureId          Int
+  channelType        String // "EMAIL", "SMS", "PUSH", etc.
+  providerId         Int? // Optional link to specific provider per channel
+  isEnabled          Boolean  @default(true) // Enable/disable channel per tenant
+  rateLimit          Int? // Optional rate limit specific to this channel type
+  burstRate          Int? // Burst rate for short-term requests
+  rateResetInterval  Int? // Time in milliseconds for rate reset
+  fallbackProviderId Int? // Link to fallback provider in case of limits
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant   Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  feature  Feature            @relation(fields: [featureId], references: [id], onDelete: Cascade)
+  provider MessagingProvider? @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, featureId, channelType])
+}
+
+model SubscriptionPlanNotificationChannel {
+  id                 Int     @id @default(autoincrement())
+  subscriptionPlanId Int
+  channelType        String // "EMAIL", "SMS", "PUSH", etc.
+  defaultProviderId  Int? // Link to default provider for this channel in the plan
+  maxFrequency       String? // Limit the notification frequency per channel (e.g., "DAILY", "WEEKLY")
+  maxMessagesPerDay  Int? // Daily limit for notifications per channel
+  isEnabled          Boolean @default(true)
+
+  subscriptionPlan SubscriptionPlan   @relation(fields: [subscriptionPlanId], references: [id], onDelete: Cascade)
+  defaultProvider  MessagingProvider? @relation(fields: [defaultProviderId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionPlanId, channelType])
+}
+
+// OLD - Ignre
 
 model Customer {
   id                            Int       @id @default(autoincrement())

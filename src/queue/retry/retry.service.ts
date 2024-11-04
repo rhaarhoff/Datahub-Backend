@@ -1,22 +1,27 @@
 // src/queue/retry/retry.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
-import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { TenantFeatureNotificationChannel } from '@prisma/client';
+import { AppConfigService } from '../../config/config/config.service';
+import { NotificationService } from '../../notification-hub/notification/notification/notification.service';
 
 @Injectable()
 export class RetryService {
     private readonly logger = new Logger(RetryService.name);
 
-    constructor(private readonly configService: ConfigService) {}
+    constructor(
+        private readonly appConfigService: AppConfigService, // Inject AppConfigService
+        private readonly notificationService: NotificationService // Inject NotificationService
+    ) {}
 
     /**
      * Applies retry strategy based on job type, error message, or custom conditions.
      */
     async applyRetryStrategy(queue: Queue, job: Job, err: Error): Promise<void> {
         const jobType = job.data.jobType || 'default';
-        const maxAttempts = this.getMaxAttempts(jobType);
-        const backoff = this.getBackoffStrategy(jobType, job.attemptsMade);
+        const maxAttempts = this.appConfigService.getRetryAttempts(jobType);
+        const backoff = this.appConfigService.getBackoffStrategy(jobType);
 
         if (this.shouldRetry(job, err)) {
             this.logger.warn(`Retrying job ${job.id} of type ${jobType}, attempt ${job.attemptsMade + 1}`);
@@ -34,39 +39,17 @@ export class RetryService {
     }
 
     /**
-     * Fetches maximum retry attempts for a job type from configuration.
-     */
-    private getMaxAttempts(jobType: string): number {
-        return this.configService.get<number>(`RETRY_ATTEMPTS_${jobType.toUpperCase()}`, 3);
-    }
-
-    /**
-     * Configures backoff strategy based on job type and current attempt count.
-     */
-    private getBackoffStrategy(jobType: string, attemptsMade: number) {
-        const backoffType = this.configService.get<string>(`BACKOFF_TYPE_${jobType.toUpperCase()}`, 'exponential');
-        const backoffDelay = this.configService.get<number>(`BACKOFF_DELAY_${jobType.toUpperCase()}`, 1000);
-
-        return {
-            type: backoffType,
-            delay: backoffType === 'exponential' ? backoffDelay * Math.pow(2, attemptsMade) : backoffDelay,
-        };
-    }
-
-    /**
      * Determines if a job should be retried based on error type or priority.
      */
     public shouldRetry(job: Job, err: Error): boolean {
         const networkErrors = ['ECONNREFUSED', 'ETIMEDOUT'];
         const jobType = job.data.jobType || 'default';
+        const maxAttempts = this.appConfigService.getRetryAttempts(jobType);
 
         if (networkErrors.includes(err.message) && jobType === 'critical') {
             return true;
         }
-        if (job.opts.priority > 5 && job.attemptsMade < this.getMaxAttempts(jobType)) {
-            return true;
-        }
-        return false;
+        return job.opts.priority > 5 && job.attemptsMade < maxAttempts;
     }
 
     /**
@@ -75,16 +58,13 @@ export class RetryService {
     private async handleExhaustedRetries(job: Job): Promise<void> {
         this.logger.error(`Job ${job.id} of type ${job.data.jobType || 'default'} has exhausted retries.`);
         await this.sendFailureAlert(`Job ${job.id} failed after max retries.`, job.data);
-
-        // Optionally move the job to a dead-letter queue or other final state
-        // await this.deadLetterService.moveToDeadLetterQueue(job);
     }
 
     /**
      * Sends failure alert for critical job failures.
      */
     private async sendFailureAlert(message: string, jobData: any) {
-        const slackWebhookUrl = this.configService.get<string>('SLACK_WEBHOOK_URL');
+        const slackWebhookUrl = this.appConfigService.get('SLACK_WEBHOOK_URL');
         if (!slackWebhookUrl) {
             this.logger.warn('SLACK_WEBHOOK_URL is not defined, skipping alert.');
             return;
@@ -106,19 +86,60 @@ export class RetryService {
         for (const jobId of jobIds) {
             const job = await queue.getJob(jobId);
             if (job) {
-                const maxAttempts = this.getMaxAttempts(job.data.jobType || 'default');
+                const maxAttempts = this.appConfigService.getRetryAttempts(job.data.jobType || 'default');
+                const backoff = this.appConfigService.getBackoffStrategy(job.data.jobType || 'default', job.attemptsMade);
                 if (job.attemptsMade < maxAttempts) {
-                    await queue.add(
-                        job.name,
-                        job.data,
-                        { attempts: maxAttempts, backoff: this.getBackoffStrategy(job.data.jobType, job.attemptsMade) }
-                    );
+                    await queue.add(job.name, job.data, { attempts: maxAttempts, backoff });
                 } else {
                     this.logger.error(`Job ${job.id} already reached max attempts, skipping retry.`);
                 }
             } else {
                 this.logger.warn(`Job ${jobId} not found in queue.`);
             }
+        }
+    }
+
+    /**
+     * Determines if a fallback should be used based on error conditions and channel configuration.
+     */
+    public shouldFallback(error: Error, channelConfig: TenantFeatureNotificationChannel): boolean {
+        const rateLimitErrors = ['rate limit', '429'];
+        const shouldUseFallback = rateLimitErrors.some(msg => error.message.includes(msg)) && !!channelConfig.providerId;
+
+        if (shouldUseFallback) {
+            this.logger.warn(`Fallback triggered due to rate limit error for channel ${channelConfig.channelType}`);
+        }
+
+        return shouldUseFallback;
+    }
+
+    /**
+     * Retries a job using a fallback provider when rate limit is exceeded or on specific failure conditions.
+     */
+    async retryWithFallback(queue: Queue, job: Job, fallbackProviderId: number | null): Promise<void> {
+        if (!fallbackProviderId) {
+            this.logger.warn(`No fallback provider specified for job ${job.id}. Cannot retry with fallback.`);
+            return;
+        }
+
+        try {
+            this.logger.log(`Retrying job ${job.id} with fallback provider ${fallbackProviderId}`);
+
+            // Update job data to use the fallback provider
+            const fallbackJobData = {
+                ...job.data,
+                providerId: fallbackProviderId,
+                jobType: `${job.data.jobType}-fallback`,
+            };
+
+            // Add the job back to the provided queue with modified data and retry options
+            await queue.add(job.name, fallbackJobData, {
+                attempts: job.opts.attempts,
+                backoff: job.opts.backoff,
+                priority: job.opts.priority,
+            });
+        } catch (error) {
+            this.logger.error(`Failed to retry job ${job.id} with fallback provider ${fallbackProviderId}: ${error.message}`);
         }
     }
 }
